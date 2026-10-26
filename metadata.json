@@ -1,0 +1,8 @@
+{
+  "name": "Remix Natok Explain — Automation Studio v3.7",
+  "description": "Remix Natok Explain Automation Studio — Advanced video cropping, automated frame capture, AI script narration, and social video generator.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

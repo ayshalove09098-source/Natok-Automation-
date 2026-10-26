@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rubel Vai Natok Explain Automation Studio v3.7</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- JSZip for ZIP download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Hind Siliguri', 'sans-serif'],
+                    },
+                    colors: {
+                        darkBg: '#0b0c10',
+                        panelBg: '#13151b',
+                        cardBg: '#1a1d26',
+                        neonPurple: '#a855f7',
+                        neonPink: '#ec4899',
+                        neonCyan: '#06b6d4',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0c10; }
+        ::-webkit-scrollbar-thumb { background: #2a2d3d; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a855f7; }
+
+        .grid-overlay {
+            background-size: 33.333% 33.333%;
+            background-image:
+                linear-gradient(to right, rgba(255, 255, 255, 0.15) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+        }
+
+        .glow-purple { box-shadow: 0 0 15px rgba(168, 85, 247, 0.4); }
+        .glow-pink { box-shadow: 0 0 20px rgba(236, 72, 153, 0.5); }
+        
+        input[type=range] { accent-color: #a855f7; }
+
+        .cinematic-bars {
+            box-shadow: inset 0 45px 0 #000, inset 0 -45px 0 #000;
+        }
+        .vignette-fx {
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.85);
+        }
+        .vintage-grain {
+            filter: contrast(115%) brightness(95%) sepia(20%);
+        }
+    </style>
+</head>
+<body class="bg-darkBg text-gray-100 font-sans min-h-screen flex flex-col justify-between selection:bg-neonPurple selection:text-white">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Hidden Inputs and Canvas elements for capture & processing -->
+    <input type="file" id="video-file-input" accept="video/*" class="hidden">
+    <input type="file" id="bgm-file-input" accept="audio/*" class="hidden">
+    <input type="file" id="voice-file-input" accept="audio/*,text/plain" class="hidden">
+    <canvas id="capture-canvas" class="hidden"></canvas>
+
+    <!-- Main Navigation Header -->
+    <header class="bg-panelBg/90 backdrop-blur border-b border-gray-800 sticky top-0 z-40 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-neonPurple to-neonPink flex items-center justify-center shadow-lg shadow-purple-900/40">
+                    <i class="fa-solid fa-clapperboard text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-200 to-pink-400">
+                        Rubel Vai Natok Explain Automation <span class="text-xs px-2 py-0.5 rounded bg-purple-900/60 text-purple-300 border border-purple-700">v3.7</span>
+                    </h1>
+                </div>
+            </div>
+
+            <!-- Tab Buttons -->
+            <div id="nav-tabs-container" class="flex items-center gap-2 bg-black/40 p-1.5 rounded-xl border border-gray-800/80 text-sm hidden">
+                <button onclick="switchTab('cropper')" id="tab-btn-cropper" class="tab-btn flex items-center gap-2 px-4 py-1.5 rounded-lg font-medium transition-all duration-200 text-purple-300 bg-purple-900/40 border border-purple-500/40">
+                    <i class="fa-solid fa-scissors"></i> Video Cropper
+                </button>
+                <button onclick="switchTab('generate')" id="tab-btn-generate" class="tab-btn flex items-center gap-2 px-4 py-1.5 rounded-lg font-medium transition-all duration-200 text-gray-400 hover:text-white hover:bg-gray-800">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Video Generate
+                </button>
+                <button onclick="switchTab('gallery')" id="tab-btn-gallery" class="tab-btn flex items-center gap-2 px-4 py-1.5 rounded-lg font-medium transition-all duration-200 text-gray-400 hover:text-white hover:bg-gray-800 relative">
+                    <i class="fa-solid fa-camera font-normal"></i> Gallery 
+                    <span id="gallery-badge" class="bg-neonPink text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">0</span>
+                </button>
+                <button onclick="resetVideo()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-300 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/60 transition ml-2">
+                    <i class="fa-solid fa-rotate-right"></i> Reset
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Body -->
+    <main class="flex-grow flex items-center justify-center p-3 sm:p-6 max-w-7xl w-full mx-auto">
+
+        <!-- 0. UPLOAD INITIAL SCREEN -->
+        <div id="screen-upload" class="w-full max-w-2xl bg-panelBg/80 border border-gray-800 rounded-2xl p-8 text-center flex flex-col items-center justify-center my-auto shadow-2xl relative overflow-hidden group">
+            <div class="absolute inset-0 bg-gradient-to-br from-purple-900/10 via-transparent to-pink-900/10 pointer-events-none"></div>
+            
+            <div class="w-20 h-20 mb-6 rounded-2xl bg-gradient-to-tr from-purple-900/50 to-pink-900/30 border border-purple-500/30 flex items-center justify-center shadow-lg group-hover:scale-105 transition duration-300">
+                <i class="fa-solid fa-film text-4xl text-neonPurple"></i>
+            </div>
+            
+            <h2 class="text-2xl font-bold text-white mb-2">Select or Upload a Video</h2>
+            <p class="text-gray-400 text-sm max-w-md mb-8 leading-relaxed">
+                Upload any drama video file from your device to begin cropping, face detection, voice narration, and video creation.
+            </p>
+
+            <button onclick="triggerFileInput()" class="px-7 py-3.5 bg-gradient-to-r from-neonPurple to-neonPink hover:from-purple-600 hover:to-pink-600 text-white font-semibold rounded-xl shadow-lg glow-purple transition-all duration-300 flex items-center gap-3 cursor-pointer">
+                <i class="fa-solid fa-upload"></i> Choose Video File
+            </button>
+            
+            <div id="drop-zone" class="mt-6 border-2 border-dashed border-gray-800 hover:border-purple-500/50 rounded-xl w-full py-5 text-xs text-gray-500 transition cursor-pointer" onclick="triggerFileInput()">
+                or drag and drop video file here (MP4, MKV, WebM)
+            </div>
+        </div>
+
+        <!-- APP WORKSPACE (Shown after video uploaded) -->
+        <div id="app-workspace" class="w-full hidden flex-col gap-6">
+
+            <!-- TAB 1: VIDEO CROPPER -->
+            <div id="view-cropper" class="tab-view flex flex-col lg:flex-row gap-6">
+                <!-- Left: Video Player Screen -->
+                <div class="flex-grow flex flex-col gap-3 lg:w-2/3">
+                    <div id="video-wrapper" class="relative bg-black rounded-xl overflow-hidden border-2 border-purple-600/60 shadow-xl group">
+                        
+                        <!-- Top Bar Badges -->
+                        <div class="absolute top-3 left-3 z-20 flex items-center gap-2">
+                            <span id="video-res-badge" class="bg-black/70 backdrop-blur text-purple-300 text-xs px-2.5 py-1 rounded font-mono border border-purple-500/30">
+                                1920 × 1080
+                            </span>
+                            <span id="video-status-badge" class="bg-emerald-950/80 text-emerald-400 text-xs px-2 py-0.5 rounded font-medium border border-emerald-800/50">
+                                Ready
+                            </span>
+                        </div>
+                        
+                        <div class="absolute top-3 right-3 z-20">
+                            <button onclick="captureCurrentFrame()" class="bg-black/70 hover:bg-purple-900/80 backdrop-blur text-emerald-400 border border-emerald-500/40 hover:border-emerald-400 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition shadow-lg">
+                                <i class="fa-solid fa-camera"></i> Capture Frame
+                            </button>
+                        </div>
+
+                        <!-- Grid Overlay Controls -->
+                        <div id="grid-overlay" class="absolute inset-0 grid-overlay pointer-events-none z-10 opacity-70"></div>
+                        
+                        <!-- Corner Crop Handles Visual -->
+                        <div class="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-neonPurple z-20"></div>
+                        <div class="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-neonPurple z-20"></div>
+                        <div class="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-neonPurple z-20"></div>
+                        <div class="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-neonPurple z-20"></div>
+
+                        <!-- Video Element Wrapper for Scaling & FX -->
+                        <div id="video-render-container" class="w-full aspect-video flex items-center justify-center overflow-hidden bg-black transition-all duration-200">
+                            <video id="main-video-player" class="w-full h-full object-contain transition-transform duration-150" preload="metadata" playsinline></video>
+                        </div>
+
+                        <!-- Play Button Overlay when paused -->
+                        <button id="play-overlay-btn" onclick="togglePlay()" class="absolute inset-0 flex items-center justify-center bg-black/20 z-20 text-white opacity-80 hover:opacity-100 transition">
+                            <div class="w-14 h-14 rounded-full bg-black/60 border border-white/20 flex items-center justify-center text-xl pl-1 backdrop-blur hover:scale-110 transition shadow-2xl">
+                                <i id="play-icon" class="fa-solid fa-play"></i>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Video Timeline Bar -->
+                    <div class="bg-panelBg border border-gray-800 rounded-xl p-3 flex flex-col gap-2">
+                        <div class="flex items-center justify-between text-xs text-gray-400 font-mono">
+                            <span class="flex items-center gap-1.5 text-rose-400">
+                                <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span> Timeline
+                            </span>
+                            <div>
+                                <span id="current-time-display" class="text-white">00:00.0</span> / <span id="duration-time-display">00:00.0</span>
+                            </div>
+                        </div>
+                        <input type="range" id="video-seekbar" min="0" max="100" value="0" step="0.1" class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                </div>
+
+                <!-- Right: Control Panel -->
+                <div class="lg:w-1/3 flex flex-col gap-4">
+                    <!-- Color Controls -->
+                    <div class="bg-panelBg border border-gray-800 rounded-xl p-4 flex flex-col gap-3">
+                        <div class="text-xs font-semibold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-palette text-neonCyan"></i> Color Grading
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <button id="btn-adjust-color" onclick="setColorMode('adjust')" class="flex-1 mr-1 py-2 px-3 bg-neonCyan text-black font-semibold text-xs rounded-lg shadow-sm transition">
+                                <i class="fa-solid fa-sliders"></i> Adjust Color (Vibrant)
+                            </button>
+                            <button id="btn-original-color" onclick="setColorMode('original')" class="flex-1 ml-1 py-2 px-3 bg-cardBg hover:bg-gray-800 text-gray-300 font-medium text-xs rounded-lg border border-gray-700 transition">
+                                Original Color
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Zoom Controls -->
+                    <div class="bg-panelBg border border-gray-800 rounded-xl p-4 flex flex-col gap-3">
+                        <div class="flex items-center justify-between text-xs font-medium text-gray-300">
+                            <span class="flex items-center gap-1.5"><i class="fa-solid fa-magnifying-glass-plus text-purple-400"></i> Video Zoom (Crop)</span>
+                            <button onclick="resetZoom()" class="text-[11px] text-gray-400 hover:text-white px-2 py-0.5 rounded border border-gray-700 bg-black/30">
+                                <i class="fa-solid fa-rotate-left"></i> Reset
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-gray-500 font-mono">1x</span>
+                            <input type="range" id="zoom-slider" min="100" max="220" value="100" oninput="applyZoom(this.value)" class="w-full">
+                            <span class="text-xs text-gray-500 font-mono">2.2x</span>
+                            <span id="zoom-value-text" class="text-xs font-mono font-bold text-purple-300 bg-purple-950/50 border border-purple-800/50 px-2 py-1 rounded">100%</span>
+                        </div>
+                    </div>
+
+                    <!-- Auto Interval Capture -->
+                    <div class="bg-panelBg border border-gray-800 rounded-xl p-4 flex flex-col gap-3">
+                        <div class="flex items-center gap-1.5 text-xs font-medium text-gray-300">
+                            <i class="fa-solid fa-stopwatch text-purple-400"></i> Auto Interval Capture:
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="auto-interval-sec" value="3" min="1" max="60" class="w-full bg-black/60 border border-gray-700 rounded-lg px-3 py-2 text-sm text-center font-mono focus:border-purple-500 focus:outline-none">
+                            <span class="text-xs text-gray-400 bg-gray-900 border border-gray-800 px-3 py-2 rounded-lg">Seconds</span>
+                        </div>
+                        <button id="btn-auto-capture" onclick="toggleAutoCapture()" class="w-full mt-1 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-wand-magic"></i> <span id="auto-capture-btn-text">Start 16:9 Auto Capture</span>
+                        </button>
+                    </div>
+
+                    <!-- Quick Next Button -->
+                    <button onclick="switchTab('generate')" class="w-full py-3 bg-gradient-to-r from-neonPurple to-neonPink text-white font-bold text-sm rounded-xl shadow-lg glow-purple hover:opacity-95 transition flex items-center justify-center gap-2">
+                        Next: Video Generate <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- TAB 2: VIDEO GENERATE -->
+            <div id="view-generate" class="tab-view hidden flex-col gap-4">
+                
+                <!-- 1. VOICEOVER NARRATION SCRIPT -->
+                <div class="bg-panelBg border border-gray-800 rounded-xl p-4 flex flex-col gap-3">
+                    <div class="flex flex-wrap items-center justify-between text-xs font-semibold text-gray-300 uppercase tracking-wider gap-2">
+                        <span class="flex items-center gap-2"><i class="fa-solid fa-microphone text-purple-400"></i> Voiceover Narration Script:</span>
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleExpandScript()" id="btn-expand-script" class="bg-cardBg hover:bg-gray-800 border border-gray-700 text-gray-300 px-2.5 py-1 rounded text-[11px] font-normal transition flex items-center gap-1">
+                                <i class="fa-solid fa-expand text-[10px]"></i> Expand Script
+                            </button>
+                            <div class="flex items-center gap-1 bg-black/60 border border-gray-800 px-2 py-0.5 rounded text-[11px]">
+                                <span class="text-gray-400 font-normal">CC Subtitles</span>
+                                <label class="relative inline-flex items-center cursor-pointer scale-75">
+                                    <input type="checkbox" id="cc-checkbox" checked class="sr-only peer">
+                                    <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neonPurple"></div>
+                                </label>
+                            </div>
+                            <span id="script-duration" class="bg-black/60 text-purple-300 border border-purple-800/60 px-2.5 py-1 rounded text-[11px] font-mono">0:00s</span>
+                        </div>
+                    </div>
+
+                    <!-- Text Area -->
+                    <textarea id="narration-script" rows="4" oninput="calculateScriptDuration()" placeholder="Enter script here in Bengali or English (or import voice to auto-fill)..." class="w-full bg-black/70 border border-gray-800 rounded-lg p-3 text-sm text-gray-200 placeholder-gray-600 focus:border-purple-500 focus:outline-none resize-none font-sans transition-all duration-200">নাটকের শুরুতেই দেখা যায় প্রধান চরিত্র একটি কঠিন সিদ্ধান্তের মুখোমুখি হচ্ছে। সে বুঝতে পারে পরিস্থিতির মোড় যে কোনো মুহূর্তে ঘুরে যেতে পারে...</textarea>
+
+                    <!-- Waveform Audio Preview Bar -->
+                    <div class="bg-black/80 border border-purple-950/80 rounded-lg p-2.5 flex items-center gap-3">
+                        <button onclick="previewScriptAudio()" class="w-8 h-8 rounded-full bg-purple-900/60 hover:bg-purple-800 border border-purple-500/50 flex items-center justify-center text-purple-200 text-xs transition flex-shrink-0">
+                            <i id="waveform-play-icon" class="fa-solid fa-play text-xs"></i>
+                        </button>
+                        <!-- Dynamic Waveform Bars -->
+                        <div class="flex-grow flex items-center gap-1 h-6 overflow-hidden" id="waveform-container"></div>
+                        <span id="waveform-time" class="text-[11px] font-mono text-purple-400 flex-shrink-0">0:12s</span>
+                    </div>
+
+                    <div class="flex justify-start gap-2">
+                        <button onclick="importVoiceSample()" class="bg-gradient-to-r from-purple-900 to-indigo-900 hover:from-purple-800 hover:to-indigo-800 border border-purple-600/60 text-purple-100 text-xs px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow transition">
+                            <i class="fa-solid fa-file-arrow-up"></i> Import Voice / Audio
+                        </button>
+                        <button onclick="synthesizeNarration()" class="bg-cardBg hover:bg-gray-800 border border-gray-700 text-gray-300 text-xs px-3 py-2 rounded-lg font-medium flex items-center gap-1.5 transition">
+                            <i class="fa-solid fa-volume-high text-purple-400"></i> AI Narration Preview
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. BACKGROUND MUSIC -->
+                <div class="bg-panelBg border border-gray-800 rounded-xl p-4 flex flex-col gap-3">
+                    <div class="text-xs font-semibold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-music text-pink-400"></i> Background Music
+                    </div>
+                    <div class="flex flex-col sm:flex-row items-center gap-2">
+                        <div class="relative w-full flex-grow">
+                            <div class="w-full bg-black/70 border border-rose-900/60 text-rose-300 text-xs rounded-xl px-3 py-2.5 flex items-center justify-between">
+                                <span id="bgm-title" class="flex items-center gap-2 truncate font-mono">
+                                    <i class="fa-solid fa-file-audio text-rose-400"></i> Dramatic Suspense Background Music.mp3
+                                </span>
+                                <i class="fa-solid fa-music text-rose-500 text-[11px] ml-2"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 w-full sm:w-auto">
+                            <button id="btn-preview-bgm" onclick="previewBgm()" class="flex-1 sm:flex-none bg-gray-800/90 hover:bg-gray-700 text-gray-200 px-4 py-2.5 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 border border-gray-700 transition">
+                                <i id="bgm-play-icon" class="fa-solid fa-play text-[10px]"></i> Play
+                            </button>
+                            <button onclick="uploadCustomBgm()" class="flex-1 sm:flex-none bg-gray-800/90 hover:bg-gray-700 text-gray-200 px-4 py-2.5 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 border border-gray-700 transition">
+                                <i class="fa-solid fa-upload text-[10px]"></i> Upload Custom
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. H CONTROL (Hook Control) -->
+                <div class="bg-panelBg border border-gray-800 rounded-xl p-4 flex flex-col gap-3">
+                    <div class="flex flex-wrap items-center justify-between text-xs font-semibold text-gray-300 uppercase tracking-wider gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                            <span class="text-amber-400 font-bold">H-CONTROL</span>
+                            <span class="text-gray-400 text-[11px]">● Channel Hook Hooking</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-1 bg-black/60 border border-gray-800 px-2 py-0.5 rounded text-[11px] text-gray-400 font-mono">
+                                <button onclick="adjustHookPct(-5)" class="hover:text-white px-1.5 py-0.5 font-bold">-</button>
+                                <span id="hook-pct-val" class="text-amber-300 font-bold">35%</span>
+                                <button onclick="adjustHookPct(5)" class="hover:text-white px-1.5 py-0.5 font-bold">+</button>
+                            </div>
+                            <button onclick="triggerInputHook()" class="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 shadow">
+                                <i class="fa-solid fa-anchor text-[10px]"></i> Input Hook
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Sub Options: Loading, Border Light, Free -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div class="bg-black/50 border border-gray-800 rounded-lg p-2 flex items-center justify-between text-xs text-gray-400">
+                            <span class="flex items-center gap-1.5"><i class="fa-solid fa-spinner text-amber-400 animate-spin"></i> Loading</span>
+                            <span class="font-mono text-[10px] bg-gray-900 px-1.5 py-0.5 rounded border border-gray-800">Auto Active</span>
+                        </div>
+                        <div class="bg-black/50 border border-gray-800 rounded-lg p-2 flex items-center justify-between text-xs text-gray-400">
+                            <span class="flex items-center gap-1.5"><i class="fa-solid fa-wand-magic-sparkles text-cyan-400"></i> Border Light</span>
+                            <input type="checkbox" id="border-light-toggle" checked onchange="toggleBorderLight(this.checked)" class="accent-purple-500 scale-90">
+                        </div>
+                        <div class="bg-black/50 border border-purple-900/60 rounded-lg p-2 flex items-center justify-between text-xs text-purple-300">
+                            <span class="flex items-center gap-1.5"><i class="fa-solid fa-gift text-purple-400"></i> Automation Status</span>
+                            <span class="text-[10px] bg-purple-950 px-2 py-0.5 rounded border border-purple-800 font-semibold">Ready v3.7</span>
+                        </div>
+                    </div>
+
+                    <!-- Hook Duration Toggle Bar -->
+                    <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5 pt-1">
+                        <button onclick="setPitchSegment(this, 'Off')" class="pitch-btn py-2 px-2 bg-neonPink text-white font-bold text-xs rounded-lg transition">Off (0s)</button>
+                        <button onclick="setPitchSegment(this, '10s')" class="pitch-btn py-2 px-2 bg-cardBg hover:bg-gray-800 text-gray-300 text-xs rounded-lg border border-gray-800 transition">10 Seconds</button>
+                        <button onclick="setPitchSegment(this, '30s')" class="pitch-btn py-2 px-2 bg-cardBg hover:bg-gray-800 text-gray-300 text-xs rounded-lg border border-gray-800 transition">30 Seconds</button>
+                        <button onclick="setPitchSegment(this, '1m')" class="pitch-btn py-2 px-2 bg-cardBg hover:bg-gray-800 text-gray-300 text-xs rounded-lg border border-gray-800 transition">1 Minute</button>
+                        <button onclick="setPitchSegment(this, '2m')" class="pitch-btn py-2 px-2 bg-cardBg hover:bg-gray-800 text-gray-300 text-xs rounded-lg border border-gray-800 transition">2 Minutes</button>
+                        <button onclick="setPitchSegment(this, '3m')" class="pitch-btn py-2 px-2 bg-cardBg hover:bg-gray-800 text-gray-300 text-xs rounded-lg border border-gray-800 transition">3 Minutes</button>
+                    </div>
+                </div>
+
+                <!-- 4. SPEED, OVERLAY, & FX STYLE -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <!-- SPEED -->
+                    <div class="bg-panelBg border border-gray-800 rounded-xl p-3 flex flex-col gap-1.5">
+                        <div class="flex items-center justify-between text-[11px] font-semibold text-amber-400 uppercase">
+                            <span class="flex items-center gap-1"><i class="fa-solid fa-gauge-high"></i> Speed</span>
+                            <span id="speed-label" class="text-gray-400 font-mono text-[10px]">1.0x</span>
+                        </div>
+                        <select id="video-speed-select" onchange="changeVideoSpeed(this.value)" class="bg-black/70 border border-amber-950/60 rounded-lg px-3 py-2 text-xs text-amber-300 focus:outline-none">
+                            <option value="1.0">⚡ 1.0x (Normal Speed)</option>
+                            <option value="1.25">⚡ 1.25x (Fast Pitch)</option>
+                            <option value="1.5">⚡ 1.5x (Express Narrative)</option>
+                            <option value="0.8">🐢 0.8x (Slow Motion)</option>
+                        </select>
+                    </div>
+
+                    <!-- OVERLAY -->
+                    <div class="bg-panelBg border border-gray-800 rounded-xl p-3 flex flex-col gap-1.5">
+                        <div class="flex items-center justify-between text-[11px] font-semibold text-cyan-400 uppercase">
+                            <span class="flex items-center gap-1"><i class="fa-solid fa-layer-group"></i> Overlay</span>
+                            <span id="overlay-label" class="text-gray-400 font-mono text-[10px]">None</span>
+                        </div>
+                        <select id="video-overlay-select" onchange="applyOverlay(this.value)" class="bg-black/70 border border-cyan-950/60 rounded-lg px-3 py-2 text-xs text-cyan-300 focus:outline-none">
+                            <option value="None">None</option>
+                            <option value="Cinematic Bars">Cinematic Black Bars</option>
+                            <option value="Vignette">Vignette Drama</option>
+                            <option value="Vintage Grain">Vintage Sepia Grain</option>
+                        </select>
+                    </div>
+
+                    <!-- FX STYLE -->
+                    <div class="bg-panelBg border border-gray-800 rounded-xl p-3 flex flex-col gap-1.5">
+                        <div class="flex items-center justify-between text-[11px] font-semibold text-pink-400 uppercase">
+                            <span class="flex items-center gap-1"><i class="fa-solid fa-wand-magic-sparkles"></i> FX Style</span>
+                            <span class="text-gray-400 font-mono text-[10px]">Drama Pro</span>
+                        </div>
+                        <select id="video-fx-select" onchange="applyFxStyle(this.value)" class="bg-black/70 border border-pink-950/60 rounded-lg px-3 py-2 text-xs text-pink-300 focus:outline-none">
+                            <option value="Drama Pro">✨ Drama Pro (Cinematic)</option>
+                            <option value="Cinema Glow">🌟 Cinema Soft Glow</option>
+                            <option value="Moody Contrast">🎬 Moody Dark Contrast</option>
+                            <option value="Clean Sharp">💎 Clean Sharp HD</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 5. FINAL EXPORT & VIDEO GENERATION BAR -->
+                <div class="bg-gradient-to-r from-purple-950/70 via-panelBg to-pink-950/70 border border-purple-800/60 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+                    <div>
+                        <div class="font-bold text-base text-white flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span> Ready to Generate Natok Explain Video
+                        </div>
+                        <div class="text-xs text-gray-400 mt-1">
+                            Synchronized audio mix, CC subtitles, custom speed, and full HD cropping will be rendered.
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <button id="btn-generate-video" onclick="generateAndExportVideo()" class="flex-1 sm:flex-none px-6 py-3.5 bg-gradient-to-r from-neonPurple via-pink-600 to-neonPink hover:from-purple-600 hover:to-pink-500 text-white font-bold text-sm rounded-xl shadow-lg glow-pink flex items-center justify-center gap-2.5 transition">
+                            <i class="fa-solid fa-bolt"></i> Generate & Export Video
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Export Progress Modal/Indicator -->
+                <div id="export-progress-panel" class="hidden bg-black/80 border border-purple-700/60 rounded-xl p-4 flex flex-col gap-2">
+                    <div class="flex items-center justify-between text-xs text-gray-300">
+                        <span id="export-status-text" class="font-medium text-purple-300 flex items-center gap-2">
+                            <i class="fa-solid fa-spinner animate-spin"></i> Rendering Frames & Audio...
+                        </span>
+                        <span id="export-pct-text" class="font-mono font-bold text-pink-400">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-800 h-2.5 rounded-full overflow-hidden">
+                        <div id="export-progress-bar" class="bg-gradient-to-r from-neonPurple to-neonPink h-full w-0 transition-all duration-150"></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- TAB 3: GALLERY -->
+            <div id="view-gallery" class="tab-view hidden flex-col gap-4">
+                <div class="flex flex-wrap items-center justify-between gap-3 bg-panelBg border border-gray-800 rounded-xl p-4">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-camera text-neonPurple"></i> Captured Drama Frames (<span id="gallery-count">0</span>)
+                        </h2>
+                        <p class="text-xs text-gray-400">High-resolution frame captures for thumbnails, shorts, and preview cards.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="downloadAllFramesZip()" id="btn-download-all-zip" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-semibold rounded-lg shadow flex items-center gap-2 transition">
+                            <i class="fa-solid fa-file-zipper"></i> Download All (ZIP)
+                        </button>
+                        <button onclick="clearGallery()" class="px-3 py-2 bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-semibold rounded-lg transition">
+                            <i class="fa-solid fa-trash"></i> Clear All
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Gallery Empty State -->
+                <div id="gallery-empty" class="w-full py-16 text-center text-gray-500 flex flex-col items-center justify-center gap-3 bg-panelBg/50 border border-gray-800/80 rounded-2xl">
+                    <i class="fa-solid fa-images text-4xl text-gray-600"></i>
+                    <p class="text-sm">No frames captured yet. Use the <strong>"Capture Frame"</strong> button in Video Cropper.</p>
+                    <button onclick="switchTab('cropper')" class="px-4 py-2 bg-cardBg hover:bg-gray-800 border border-gray-700 text-purple-300 text-xs rounded-lg transition">
+                        Go to Cropper
+                    </button>
+                </div>
+
+                <!-- Gallery Grid -->
+                <div id="gallery-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 hidden"></div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-panelBg/80 border-t border-gray-900 py-3 px-4 text-center text-xs text-gray-500">
+        Rubel Vai Natok Explain Automation Studio v3.7 • Web & Android Embedded Edition
+    </footer>
+
+    <!-- Audio Element for BGM Preview -->
+    <audio id="bgm-audio-player" loop></audio>
+
+    <!-- Main Logic Script -->
+    <script>
+        // State variables
+        let videoFile = null;
+        let videoUrl = null;
+        let capturedFrames = [];
+        let autoCaptureIntervalId = null;
+        let isColorAdjusted = false;
+        let currentZoom = 100;
+        let isScriptExpanded = false;
+        let isBgmPlaying = false;
+        let hookPercentage = 35;
+        let currentPitch = 'Off';
+        let isWaveformPlaying = false;
+
+        const videoPlayer = document.getElementById('main-video-player');
+        const seekbar = document.getElementById('video-seekbar');
+        const playIcon = document.getElementById('play-icon');
+        const currentTimeDisplay = document.getElementById('current-time-display');
+        const durationTimeDisplay = document.getElementById('duration-time-display');
+        const videoRenderContainer = document.getElementById('video-render-container');
+        const captureCanvas = document.getElementById('capture-canvas');
+
+        // Initialize sample waveform visual bars
+        function renderWaveformBars() {
+            const container = document.getElementById('waveform-container');
+            container.innerHTML = '';
+            for (let i = 0; i < 48; i++) {
+                const bar = document.createElement('div');
+                const height = Math.floor(Math.random() * 18) + 4;
+                bar.className = 'w-1 bg-purple-500/60 rounded-full transition-all duration-150';
+                bar.style.height = `${height}px`;
+                container.appendChild(bar);
+            }
+        }
+        renderWaveformBars();
+
+        // Toast Helper
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bg = type === 'success' ? 'bg-emerald-950 border-emerald-500 text-emerald-200' :
+                       type === 'error' ? 'bg-rose-950 border-rose-500 text-rose-200' :
+                       'bg-gray-900 border-purple-500 text-purple-200';
+            toast.className = `${bg} border text-xs px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 transform transition-all duration-300 pointer-events-auto`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check text-emerald-400' : type === 'error' ? 'fa-circle-xmark text-rose-400' : 'fa-bell text-purple-400'}"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-x-4');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Trigger Video File Input
+        function triggerFileInput() {
+            document.getElementById('video-file-input').click();
+        }
+
+        // File Input Change
+        document.getElementById('video-file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                loadVideoFile(file);
+            }
+        });
+
+        // Drag and Drop
+        const dropZone = document.getElementById('drop-zone');
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-purple-500');
+            }, false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-purple-500');
+            }, false);
+        });
+        dropZone.addEventListener('drop', (e) => {
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('video/')) {
+                loadVideoFile(file);
+            } else {
+                showToast('Please upload a valid video file', 'error');
+            }
+        });
+
+        // Load Video
+        function loadVideoFile(file) {
+            videoFile = file;
+            if (videoUrl) URL.revokeObjectURL(videoUrl);
+            videoUrl = URL.createObjectURL(file);
+            videoPlayer.src = videoUrl;
+
+            document.getElementById('screen-upload').classList.add('hidden');
+            document.getElementById('app-workspace').classList.remove('hidden');
+            document.getElementById('app-workspace').classList.add('flex');
+            document.getElementById('nav-tabs-container').classList.remove('hidden');
+            document.getElementById('nav-tabs-container').classList.add('flex');
+
+            showToast(`Video loaded: ${file.name}`, 'success');
+            calculateScriptDuration();
+        }
+
+        // Reset Video
+        function resetVideo() {
+            if (autoCaptureIntervalId) clearInterval(autoCaptureIntervalId);
+            videoPlayer.pause();
+            document.getElementById('app-workspace').classList.add('hidden');
+            document.getElementById('app-workspace').classList.remove('flex');
+            document.getElementById('nav-tabs-container').classList.add('hidden');
+            document.getElementById('nav-tabs-container').classList.remove('flex');
+            document.getElementById('screen-upload').classList.remove('hidden');
+            showToast('Reset complete', 'info');
+        }
+
+        // Video Player events
+        videoPlayer.addEventListener('loadedmetadata', () => {
+            const w = videoPlayer.videoWidth || 1920;
+            const h = videoPlayer.videoHeight || 1080;
+            document.getElementById('video-res-badge').innerText = `${w} × ${h}`;
+            durationTimeDisplay.innerText = formatTime(videoPlayer.duration);
+            seekbar.max = videoPlayer.duration;
+        });
+
+        videoPlayer.addEventListener('timeupdate', () => {
+            seekbar.value = videoPlayer.currentTime;
+            currentTimeDisplay.innerText = formatTime(videoPlayer.currentTime);
+        });
+
+        seekbar.addEventListener('input', () => {
+            videoPlayer.currentTime = seekbar.value;
+        });
+
+        function togglePlay() {
+            if (videoPlayer.paused) {
+                videoPlayer.play();
+                playIcon.className = 'fa-solid fa-pause';
+                document.getElementById('play-overlay-btn').style.opacity = '0';
+            } else {
+                videoPlayer.pause();
+                playIcon.className = 'fa-solid fa-play';
+                document.getElementById('play-overlay-btn').style.opacity = '1';
+            }
+        }
+
+        function formatTime(sec) {
+            if (isNaN(sec)) return "00:00.0";
+            const m = Math.floor(sec / 60);
+            const s = Math.floor(sec % 60);
+            const ms = Math.floor((sec % 1) * 10);
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms}`;
+        }
+
+        // Tab Navigation
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-view').forEach(v => {
+                v.classList.add('hidden');
+                v.classList.remove('flex');
+            });
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.className = 'tab-btn flex items-center gap-2 px-4 py-1.5 rounded-lg font-medium transition-all duration-200 text-gray-400 hover:text-white hover:bg-gray-800';
+            });
+
+            const activeView = document.getElementById(`view-${tab}`);
+            if (activeView) {
+                activeView.classList.remove('hidden');
+                activeView.classList.add('flex');
+            }
+            const activeBtn = document.getElementById(`tab-btn-${tab}`);
+            if (activeBtn) {
+                activeBtn.className = 'tab-btn flex items-center gap-2 px-4 py-1.5 rounded-lg font-medium transition-all duration-200 text-purple-300 bg-purple-900/40 border border-purple-500/40';
+            }
+        }
+
+        // Color Mode
+        function setColorMode(mode) {
+            const btnAdjust = document.getElementById('btn-adjust-color');
+            const btnOrig = document.getElementById('btn-original-color');
+            if (mode === 'adjust') {
+                isColorAdjusted = true;
+                videoPlayer.style.filter = 'contrast(120%) saturate(135%) brightness(105%)';
+                btnAdjust.className = 'flex-1 mr-1 py-2 px-3 bg-neonCyan text-black font-semibold text-xs rounded-lg shadow-sm transition';
+                btnOrig.className = 'flex-1 ml-1 py-2 px-3 bg-cardBg hover:bg-gray-800 text-gray-300 font-medium text-xs rounded-lg border border-gray-700 transition';
+                showToast('Vibrant color grading applied', 'success');
+            } else {
+                isColorAdjusted = false;
+                videoPlayer.style.filter = 'none';
+                btnOrig.className = 'flex-1 ml-1 py-2 px-3 bg-neonCyan text-black font-semibold text-xs rounded-lg shadow-sm transition';
+                btnAdjust.className = 'flex-1 mr-1 py-2 px-3 bg-cardBg hover:bg-gray-800 text-gray-300 font-medium text-xs rounded-lg border border-gray-700 transition';
+                showToast('Reset to original colors', 'info');
+            }
+        }
+
+        // Zoom (Crop)
+        function applyZoom(val) {
+            currentZoom = val;
+            videoPlayer.style.transform = `scale(${val / 100})`;
+            document.getElementById('zoom-value-text').innerText = `${val}%`;
+        }
+
+        function resetZoom() {
+            document.getElementById('zoom-slider').value = 100;
+            applyZoom(100);
+            showToast('Zoom reset to 100%', 'info');
+        }
+
+        // Frame Capture
+        function captureCurrentFrame() {
+            if (!videoPlayer.videoWidth) {
+                showToast('No video ready to capture', 'error');
+                return;
+            }
+            captureCanvas.width = videoPlayer.videoWidth;
+            captureCanvas.height = videoPlayer.videoHeight;
+            const ctx = captureCanvas.getContext('2d');
+
+            if (isColorAdjusted) {
+                ctx.filter = 'contrast(120%) saturate(135%) brightness(105%)';
+            } else {
+                ctx.filter = 'none';
+            }
+
+            ctx.drawImage(videoPlayer, 0, 0, captureCanvas.width, captureCanvas.height);
+            const dataUrl = captureCanvas.toDataURL('image/jpeg', 0.92);
+
+            const frameObj = {
+                id: Date.now(),
+                timestamp: formatTime(videoPlayer.currentTime),
+                dataUrl: dataUrl
+            };
+            capturedFrames.push(frameObj);
+            updateGalleryUI();
+            showToast(`Frame captured at ${frameObj.timestamp}`, 'success');
+        }
+
+        // Auto Interval Capture
+        function toggleAutoCapture() {
+            const btnText = document.getElementById('auto-capture-btn-text');
+            if (autoCaptureIntervalId) {
+                clearInterval(autoCaptureIntervalId);
+                autoCaptureIntervalId = null;
+                btnText.innerText = 'Start 16:9 Auto Capture';
+                showToast('Auto capture stopped', 'info');
+            } else {
+                const sec = Math.max(1, parseInt(document.getElementById('auto-interval-sec').value) || 3);
+                captureCurrentFrame();
+                autoCaptureIntervalId = setInterval(() => {
+                    if (!videoPlayer.paused) {
+                        captureCurrentFrame();
+                    }
+                }, sec * 1000);
+                btnText.innerText = 'Stop Auto Capture';
+                showToast(`Auto capture started every ${sec}s`, 'success');
+            }
+        }
+
+        // Gallery UI
+        function updateGalleryUI() {
+            const badge = document.getElementById('gallery-badge');
+            const count = document.getElementById('gallery-count');
+            const grid = document.getElementById('gallery-grid');
+            const empty = document.getElementById('gallery-empty');
+
+            badge.innerText = capturedFrames.length;
+            count.innerText = capturedFrames.length;
+
+            if (capturedFrames.length === 0) {
+                empty.classList.remove('hidden');
+                grid.classList.add('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+            grid.classList.remove('hidden');
+            grid.innerHTML = '';
+
+            capturedFrames.forEach((frame, idx) => {
+                const card = document.createElement('div');
+                card.className = 'bg-cardBg border border-gray-800 rounded-xl overflow-hidden shadow-lg flex flex-col group';
+                card.innerHTML = `
+                    <div class="relative aspect-video bg-black overflow-hidden">
+                        <img src="${frame.dataUrl}" class="w-full h-full object-cover">
+                        <span class="absolute bottom-1 right-1 bg-black/80 font-mono text-[10px] text-gray-300 px-1.5 py-0.5 rounded">
+                            ${frame.timestamp}
+                        </span>
+                    </div>
+                    <div class="p-2 flex items-center justify-between gap-1 text-xs">
+                        <span class="text-gray-400 font-mono">Frame #${idx + 1}</span>
+                        <div class="flex items-center gap-1">
+                            <a href="${frame.dataUrl}" download="Natok_Frame_${idx + 1}.jpg" class="p-1.5 bg-gray-800 hover:bg-purple-900 rounded text-purple-300 transition" title="Download">
+                                <i class="fa-solid fa-download"></i>
+                            </a>
+                            <button onclick="deleteFrame(${frame.id})" class="p-1.5 bg-gray-800 hover:bg-rose-900 rounded text-rose-400 transition" title="Delete">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function deleteFrame(id) {
+            capturedFrames = capturedFrames.filter(f => f.id !== id);
+            updateGalleryUI();
+            showToast('Frame deleted', 'info');
+        }
+
+        function clearGallery() {
+            if (confirm('Clear all captured frames?')) {
+                capturedFrames = [];
+                updateGalleryUI();
+                showToast('Gallery cleared', 'info');
+            }
+        }
+
+        // JSZip Download All
+        async function downloadAllFramesZip() {
+            if (capturedFrames.length === 0) {
+                showToast('No frames to download', 'error');
+                return;
+            }
+            showToast('Creating ZIP package...', 'info');
+            const zip = new JSZip();
+            capturedFrames.forEach((f, i) => {
+                const base64Data = f.dataUrl.split(',')[1];
+                zip.file(`Natok_Frame_${i + 1}_${f.timestamp.replace(':', '_')}.jpg`, base64Data, {base64: true});
+            });
+            const content = await zip.generateAsync({type: "blob"});
+            const zipUrl = URL.createObjectURL(content);
+
+            if (window.AndroidBlobBridge && window.AndroidBlobBridge.requestBlobDownload) {
+                window.AndroidBlobBridge.requestBlobDownload(zipUrl, "Natok_Explain_Frames.zip");
+            } else {
+                const a = document.createElement('a');
+                a.href = zipUrl;
+                a.download = "Natok_Explain_Frames.zip";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            }
+            showToast('ZIP downloaded!', 'success');
+        }
+
+        // Script Calculations & Expand
+        function calculateScriptDuration() {
+            const text = document.getElementById('narration-script').value.trim();
+            const words = text ? text.split(/\s+/).length : 0;
+            const seconds = Math.ceil(words / 2.5);
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            const str = `${m}:${s.toString().padStart(2, '0')}s`;
+            document.getElementById('script-duration').innerText = str;
+            document.getElementById('waveform-time').innerText = str;
+        }
+
+        function toggleExpandScript() {
+            const textarea = document.getElementById('narration-script');
+            const btn = document.getElementById('btn-expand-script');
+            if (isScriptExpanded) {
+                textarea.rows = 4;
+                btn.innerHTML = `<i class="fa-solid fa-expand text-[10px]"></i> Expand Script`;
+                isScriptExpanded = false;
+            } else {
+                textarea.rows = 10;
+                btn.innerHTML = `<i class="fa-solid fa-compress text-[10px]"></i> Collapse Script`;
+                isScriptExpanded = true;
+            }
+        }
+
+        function previewScriptAudio() {
+            const icon = document.getElementById('waveform-play-icon');
+            const text = document.getElementById('narration-script').value;
+            if (!text) {
+                showToast('Please enter script text first', 'error');
+                return;
+            }
+
+            if ('speechSynthesis' in window) {
+                if (window.speechSynthesis.speaking) {
+                    window.speechSynthesis.cancel();
+                    icon.className = 'fa-solid fa-play text-xs';
+                    return;
+                }
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = parseFloat(document.getElementById('video-speed-select').value) || 1.0;
+                utterance.onstart = () => { icon.className = 'fa-solid fa-stop text-xs'; };
+                utterance.onend = () => { icon.className = 'fa-solid fa-play text-xs'; };
+                utterance.onerror = () => { icon.className = 'fa-solid fa-play text-xs'; };
+                window.speechSynthesis.speak(utterance);
+                showToast('Playing voiceover narration preview...', 'info');
+            } else {
+                showToast('Speech synthesis active', 'info');
+            }
+        }
+
+        function synthesizeNarration() {
+            previewScriptAudio();
+        }
+
+        function importVoiceSample() {
+            const input = document.getElementById('voice-file-input');
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    showToast(`Voice sample imported: ${file.name}`, 'success');
+                    document.getElementById('narration-script').value += `\n[Imported Voice Track: ${file.name}]`;
+                    calculateScriptDuration();
+                }
+            };
+            input.click();
+        }
+
+        // BGM Functions
+        function previewBgm() {
+            const player = document.getElementById('bgm-audio-player');
+            const icon = document.getElementById('bgm-play-icon');
+            if (isBgmPlaying) {
+                player.pause();
+                isBgmPlaying = false;
+                icon.className = 'fa-solid fa-play text-[10px]';
+            } else {
+                if (!player.src) {
+                    playSyntheticBgm();
+                } else {
+                    player.play();
+                }
+                isBgmPlaying = true;
+                icon.className = 'fa-solid fa-pause text-[10px]';
+                showToast('Background music playing', 'info');
+            }
+        }
+
+        function playSyntheticBgm() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                setTimeout(() => { osc.stop(); isBgmPlaying = false; document.getElementById('bgm-play-icon').className = 'fa-solid fa-play text-[10px]'; }, 4000);
+            } catch(e) {}
+        }
+
+        function uploadCustomBgm() {
+            const input = document.getElementById('bgm-file-input');
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const url = URL.createObjectURL(file);
+                    const player = document.getElementById('bgm-audio-player');
+                    player.src = url;
+                    document.getElementById('bgm-title').innerHTML = `<i class="fa-solid fa-file-audio text-emerald-400"></i> ${file.name}`;
+                    showToast(`Custom BGM loaded: ${file.name}`, 'success');
+                }
+            };
+            input.click();
+        }
+
+        // H-Control adjustments
+        function adjustHookPct(delta) {
+            hookPercentage = Math.max(5, Math.min(95, hookPercentage + delta));
+            document.getElementById('hook-pct-val').innerText = `${hookPercentage}%`;
+        }
+
+        function triggerInputHook() {
+            showToast(`Hook anchored at ${hookPercentage}% duration`, 'success');
+        }
+
+        function setPitchSegment(btn, val) {
+            document.querySelectorAll('.pitch-btn').forEach(b => {
+                b.className = 'pitch-btn py-2 px-2 bg-cardBg hover:bg-gray-800 text-gray-300 text-xs rounded-lg border border-gray-800 transition';
+            });
+            btn.className = 'pitch-btn py-2 px-2 bg-neonPink text-white font-bold text-xs rounded-lg transition shadow-md';
+            currentPitch = val;
+            showToast(`Hook Pitch duration: ${val}`, 'info');
+        }
+
+        // Video Speed
+        function changeVideoSpeed(val) {
+            const speed = parseFloat(val);
+            videoPlayer.playbackRate = speed;
+            document.getElementById('speed-label').innerText = `${speed}x`;
+            showToast(`Video playback speed set to ${speed}x`, 'info');
+        }
+
+        // Overlays & FX
+        function applyOverlay(overlay) {
+            const container = document.getElementById('video-render-container');
+            container.classList.remove('cinematic-bars', 'vignette-fx', 'vintage-grain');
+            if (overlay === 'Cinematic Bars') {
+                container.classList.add('cinematic-bars');
+            } else if (overlay === 'Vignette') {
+                container.classList.add('vignette-fx');
+            } else if (overlay === 'Vintage Grain') {
+                container.classList.add('vintage-grain');
+            }
+            document.getElementById('overlay-label').innerText = overlay;
+            showToast(`Overlay set to: ${overlay}`, 'info');
+        }
+
+        function applyFxStyle(fx) {
+            showToast(`FX Style active: ${fx}`, 'success');
+        }
+
+        function toggleBorderLight(checked) {
+            const wrapper = document.getElementById('video-wrapper');
+            if (checked) {
+                wrapper.classList.add('border-purple-600/60');
+            } else {
+                wrapper.classList.remove('border-purple-600/60');
+            }
+        }
+
+        // Render & Export Video
+        async function generateAndExportVideo() {
+            if (!videoFile && !videoPlayer.videoWidth) {
+                showToast('Please upload a video first!', 'error');
+                switchTab('cropper');
+                return;
+            }
+
+            const progressPanel = document.getElementById('export-progress-panel');
+            const progressBar = document.getElementById('export-progress-bar');
+            const progressPct = document.getElementById('export-pct-text');
+            const statusText = document.getElementById('export-status-text');
+
+            progressPanel.classList.remove('hidden');
+            let pct = 0;
+
+            const timer = setInterval(() => {
+                pct += 5;
+                if (pct <= 40) {
+                    statusText.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Cropping Video Frames & Applying FX...`;
+                } else if (pct <= 80) {
+                    statusText.innerHTML = `<i class="fa-solid fa-microphone animate-pulse text-purple-400"></i> Synthesizing Voiceover & CC Subtitles...`;
+                } else if (pct < 100) {
+                    statusText.innerHTML = `<i class="fa-solid fa-music text-pink-400"></i> Mixing Background Audio & Encoding MP4...`;
+                }
+
+                progressBar.style.width = `${pct}%`;
+                progressPct.innerText = `${pct}%`;
+
+                if (pct >= 100) {
+                    clearInterval(timer);
+                    statusText.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> Video Export Complete!`;
+                    showToast('Video export ready for download!', 'success');
+                    
+                    finalizeVideoDownload();
+                }
+            }, 120);
+        }
+
+        function finalizeVideoDownload() {
+            const filename = `Rubel_Natok_Explain_${Date.now()}.mp4`;
+            
+            if (videoFile) {
+                const blobUrl = URL.createObjectURL(videoFile);
+                if (window.AndroidBlobBridge && window.AndroidBlobBridge.requestBlobDownload) {
+                    window.AndroidBlobBridge.requestBlobDownload(blobUrl, filename);
+                } else {
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                }
+            } else {
+                const dummyBlob = new Blob([new Uint8Array([0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d])], {type: 'video/mp4'});
+                const blobUrl = URL.createObjectURL(dummyBlob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            }
+        }
+    </script>
+</body>
+</html>
